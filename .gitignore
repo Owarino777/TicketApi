@@ -18,3 +18,50 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+.env
+composer.lock
+symfony.lock
+config/bundles.php
+config/packages/api_platform.yaml
+config/packages/nelmio_cors.yaml
+config/routes/api_platform.yaml
+.env.dev
+.env.test
+.env.prod
+.env.test.local
+.env.dev.local
+.env.prod.local
+# Ignore the cache directory
+/cache/
+# Ignore the logs directory
+/logs/
+# Ignore the public directory
+/public/uploads/
+# Ignore the var directory
+/var/cache/
+/var/logs/
+# Ignore the vendor directory
+/vendor/
+# Ignore the node_modules directory
+/node_modules/
+# Ignore the .idea directory
+/.idea/
+# Ignore the .vscode directory
+/.vscode/
+# Ignore the .DS_Store file
+.DS_Store
+# Ignore the .env files
+/.env.local
+/.env.test.local
+/.env.dev.local
+/.env.prod.local
+# Ignore the .env files with specific environment names
+/.env.*.local
+# Ignore the .env files with specific environment names
+/.env.*.local.php
+# Ignore the .env files with specific environment names
+/.env.*.local.php
+# Ignore the .env files with specific environment names
+/.env.*.local.php
+# Ignore the .env files with specific environment names
+/.env.*.local.php
