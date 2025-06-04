@@ -48,11 +48,11 @@ class UserTest extends TestCase
         $user->addAssignedTicket($ticket);
         $this->assertCount(1, $user->getAssignedTickets());
         $this->assertTrue($user->getAssignedTickets()->contains($ticket));
-        $this->assertSame($user, $ticket->getAssignedTo());
+        $this->assertSame($user, $ticket->getAssignee());
 
         $user->removeAssignedTicket($ticket);
         $this->assertCount(0, $user->getAssignedTickets());
-        $this->assertNull($ticket->getAssignedTo());
+        $this->assertNull($ticket->getAssignee());
     }
 
     public function testUsernameIsEmail(): void
