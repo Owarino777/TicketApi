@@ -66,9 +66,3 @@ config/routes/api_platform.yaml
 /.env.*.local.php
 .env
 
-# JWT keys
-/config/jwt/private.pem
-
-###> lexik/jwt-authentication-bundle ###
-/config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###

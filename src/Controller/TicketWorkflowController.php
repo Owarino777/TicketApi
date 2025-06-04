@@ -100,14 +100,30 @@ class TicketWorkflowController extends AbstractController
     public function myTickets(EntityManagerInterface $em, Security $security): JsonResponse
     {
         $tickets = $em->getRepository(Ticket::class)->findBy(['owner' => $security->getUser()]);
-        return $this->json($tickets);
+        $data = array_map(static function (Ticket $ticket) {
+            return [
+                'id' => $ticket->getId(),
+                'title' => $ticket->getTitle(),
+                'status' => $ticket->getStatus()->value,
+            ];
+        }, $tickets);
+
+        return $this->json($data);
     }
 
     #[Route('/api/assigned-tickets', name: 'assigned_tickets', methods: ['GET'])]
     public function assignedTickets(EntityManagerInterface $em, Security $security): JsonResponse
     {
         $tickets = $em->getRepository(Ticket::class)->findBy(['assignee' => $security->getUser()]);
-        return $this->json($tickets);
+        $data = array_map(static function (Ticket $ticket) {
+            return [
+                'id' => $ticket->getId(),
+                'title' => $ticket->getTitle(),
+                'status' => $ticket->getStatus()->value,
+            ];
+        }, $tickets);
+
+        return $this->json($data);
     }
 
     #[Route('/api/me', name: 'current_user', methods: ['GET'])]
