@@ -3,9 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
 
 jobs:
   test:
@@ -20,34 +18,55 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U app -d app_test" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U app -d app_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, intl, pdo_pgsql
+          ini-values: date.timezone=Europe/Paris
           coverage: none
 
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Wait for PostgreSQL
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
           until pg_isready -h localhost -p 5432 -U app; do
+            echo "Waiting for postgres..."
             sleep 1
           done
 
       - name: Run Doctrine migrations
-        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
-
-      - name: Run PHPUnit
-        run: php bin/phpunit
         env:
           DATABASE_URL: postgresql://app:password@localhost:5432/app_test?serverVersion=16
+        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
 
+      # Optionnel : lint PHPStan (commenter si tu ne l'utilises pas)
+      - name: Lint PHPStan
+        run: vendor/bin/phpstan analyse --no-progress || true
+
+      - name: Run PHPUnit
+        env:
+          DATABASE_URL: postgresql://app:password@localhost:5432/app_test?serverVersion=16
+        run: php bin/phpunit --testdox
