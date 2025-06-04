@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Tests\Controller;
 
 use App\Entity\Ticket;
@@ -8,11 +9,25 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class TicketWorkflowControllerTest extends WebTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $em = static::getContainer()->get('doctrine')->getManager();
+        $connection = $em->getConnection();
+        $platform = $connection->getDatabasePlatform();
+        $connection->executeStatement('SET FOREIGN_KEY_CHECKS=0');
+        foreach ($em->getMetadataFactory()->getAllMetadata() as $meta) {
+            $table = $meta->getTableName();
+            $connection->executeStatement($platform->getTruncateTableSQL($table, true));
+        }
+        $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+    }
+
     private function createUser(): User
     {
         $em = static::getContainer()->get('doctrine')->getManager();
         $user = new User();
-        $user->setEmail(uniqid().'@test.com');
+        $user->setEmail(uniqid() . '@test.com');
         $user->setPassword('hash');
         $user->setName('User');
         $em->persist($user);
@@ -41,7 +56,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         $ticket = $this->createTicket($owner);
 
         $client->loginUser($owner);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/assign', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['assignee_id' => $assignee->getId()]));
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/assign', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['assignee_id' => $assignee->getId()]));
         $this->assertResponseIsSuccessful();
     }
 
@@ -56,7 +71,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser($owner);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/unassign');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/unassign');
         $this->assertResponseIsSuccessful();
 
         $refreshed = static::getContainer()->get('doctrine')->getRepository(Ticket::class)->find($ticket->getId());
@@ -71,7 +86,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         $ticket = $this->createTicket($owner);
 
         $client->loginUser($other);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/unassign');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/unassign');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -86,7 +101,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser($assignee);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/start');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/start');
 
         $this->assertResponseIsSuccessful();
 
@@ -105,7 +120,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser($other);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/start');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/start');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -120,7 +135,9 @@ class TicketWorkflowControllerTest extends WebTestCase
         static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser($assignee);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/close');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/start');
+        static::getContainer()->get('doctrine')->getManager()->refresh($ticket);
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/close');
 
         $this->assertResponseIsSuccessful();
 
@@ -139,7 +156,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser($other);
-        $client->request('POST', '/api/tickets/'.$ticket->getId().'/close');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/close');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -194,7 +211,7 @@ class TicketWorkflowControllerTest extends WebTestCase
         $client->loginUser($user);
         $jwtManager = static::getContainer()->get('lexik_jwt_authentication.jwt_manager');
         $token = $jwtManager->create($user);
-        $client->request('GET', '/api/me', [], [], ['HTTP_Authorization' => 'Bearer '.$token]);
+        $client->request('GET', '/api/me', [], [], ['HTTP_Authorization' => 'Bearer ' . $token]);
 
         $this->assertResponseIsSuccessful();
         $data = json_decode($client->getResponse()->getContent(), true);
