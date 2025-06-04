@@ -41,7 +41,10 @@ class TicketController extends AbstractController
 
         $errors = $validator->validate($ticket);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 422);
+            return $this->json([
+                'message' => 'Validation failed',
+                'errors' => (string) $errors,
+            ], 422);
         }
 
         $em->persist($ticket);

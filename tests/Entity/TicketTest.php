@@ -162,7 +162,7 @@ class TicketTest extends WebTestCase
         $client->loginUser($user);
 
         $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/ld+json'], json_encode([
-            'title' => str_repeat('a', 256), // Titre trop long
+            // title manquant pour provoquer une erreur
             'description' => 'Détails du ticket',
             'priority' => 'normale',
             'owner' => '/api/users/' . $user->getId()
