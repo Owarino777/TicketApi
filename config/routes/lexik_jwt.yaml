@@ -1,0 +1,4 @@
+login:
+    path: /api/login
+    methods: [POST]
+    controller: lexik_jwt_authentication.controller.login

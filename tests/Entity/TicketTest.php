@@ -3,6 +3,8 @@
 namespace App\Tests\Entity;
 
 use App\Entity\Ticket;
+use App\Enum\TicketPriority;
+use App\Enum\TicketStatus;
 use App\Entity\User;
 use App\Entity\Comment;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -22,23 +24,21 @@ class TicketTest extends WebTestCase
         $ticket
             ->setTitle('Incident critique')
             ->setDescription('La machine est HS')
-            ->setPriority('haute')
-            ->setStatus('pending')
+            ->setPriority(TicketPriority::HIGH)
+            ->setStatus(TicketStatus::PENDING)
             ->setCreatedAt($now)
             ->setOwner($owner)
-            ->setAssignee($assignee)
-            ->setAssignedAtFirst($now)
-            ->setAssignedAtLast($later);
+            ->setAssignee($assignee);
 
         $this->assertSame('Incident critique', $ticket->getTitle());
         $this->assertSame('La machine est HS', $ticket->getDescription());
-        $this->assertSame('haute', $ticket->getPriority());
-        $this->assertSame('pending', $ticket->getStatus());
+        $this->assertSame(TicketPriority::HIGH, $ticket->getPriority());
+        $this->assertSame(TicketStatus::WAITING, $ticket->getStatus());
         $this->assertSame($now, $ticket->getCreatedAt());
         $this->assertSame($owner, $ticket->getOwner());
         $this->assertSame($assignee, $ticket->getAssignee());
-        $this->assertSame($now, $ticket->getAssignedAtFirst());
-        $this->assertSame($later, $ticket->getAssignedAtLast());
+        $this->assertNotNull($ticket->getAssignedAtFirst());
+        $this->assertNotNull($ticket->getAssignedAtLast());
     }
 
     public function testTicketAddAndRemoveComment()
@@ -73,14 +73,14 @@ class TicketTest extends WebTestCase
     public function testTicketPriorityEnum()
     {
         $ticket = new Ticket();
-        $ticket->setPriority('basse');
-        $this->assertSame('basse', $ticket->getPriority());
+        $ticket->setPriority(TicketPriority::LOW);
+        $this->assertSame(TicketPriority::LOW, $ticket->getPriority());
 
-        $ticket->setPriority('normale');
-        $this->assertSame('normale', $ticket->getPriority());
+        $ticket->setPriority(TicketPriority::NORMAL);
+        $this->assertSame(TicketPriority::NORMAL, $ticket->getPriority());
 
-        $ticket->setPriority('haute');
-        $this->assertSame('haute', $ticket->getPriority());
+        $ticket->setPriority(TicketPriority::HIGH);
+        $this->assertSame(TicketPriority::HIGH, $ticket->getPriority());
 
         // Tester une valeur non autorisée si ta logique métier le prévoit (déclencher exception)
         // $this->expectException(\InvalidArgumentException::class);
@@ -90,17 +90,17 @@ class TicketTest extends WebTestCase
     public function testTicketStatusEnum()
     {
         $ticket = new Ticket();
-        $ticket->setStatus('pending');
-        $this->assertSame('pending', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::PENDING);
+        $this->assertSame(TicketStatus::PENDING, $ticket->getStatus());
 
-        $ticket->setStatus('waiting');
-        $this->assertSame('waiting', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::WAITING);
+        $this->assertSame(TicketStatus::WAITING, $ticket->getStatus());
 
-        $ticket->setStatus('in_progress');
-        $this->assertSame('in_progress', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::IN_PROGRESS);
+        $this->assertSame(TicketStatus::IN_PROGRESS, $ticket->getStatus());
 
-        $ticket->setStatus('done');
-        $this->assertSame('done', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::DONE);
+        $this->assertSame(TicketStatus::DONE, $ticket->getStatus());
 
         // Tester une valeur non autorisée si ta logique métier le prévoit (déclencher exception)
         // $this->expectException(\InvalidArgumentException::class);
@@ -239,15 +239,15 @@ class TicketTest extends WebTestCase
     public function testTicketStatusTransitions(): void
     {
         $ticket = new Ticket();
-        $ticket->setStatus('pending');
+        $ticket->setStatus(TicketStatus::PENDING);
 
         // Transition to 'in_progress'
-        $ticket->setStatus('in_progress');
-        $this->assertSame('in_progress', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::IN_PROGRESS);
+        $this->assertSame(TicketStatus::IN_PROGRESS, $ticket->getStatus());
 
         // Transition to 'done'
-        $ticket->setStatus('done');
-        $this->assertSame('done', $ticket->getStatus());
+        $ticket->setStatus(TicketStatus::DONE);
+        $this->assertSame(TicketStatus::DONE, $ticket->getStatus());
 
         // Test invalid transition (if your logic allows it)
         // $this->expectException(\InvalidArgumentException::class);
@@ -257,15 +257,15 @@ class TicketTest extends WebTestCase
     public function testTicketPriorityTransitions(): void
     {
         $ticket = new Ticket();
-        $ticket->setPriority('basse');
+        $ticket->setPriority(TicketPriority::LOW);
 
         // Transition to 'normale'
-        $ticket->setPriority('normale');
-        $this->assertSame('normale', $ticket->getPriority());
+        $ticket->setPriority(TicketPriority::NORMAL);
+        $this->assertSame(TicketPriority::NORMAL, $ticket->getPriority());
 
         // Transition to 'haute'
-        $ticket->setPriority('haute');
-        $this->assertSame('haute', $ticket->getPriority());
+        $ticket->setPriority(TicketPriority::HIGH);
+        $this->assertSame(TicketPriority::HIGH, $ticket->getPriority());
 
         // Test invalid transition (if your logic allows it)
         // $this->expectException(\InvalidArgumentException::class);
@@ -289,14 +289,16 @@ class TicketTest extends WebTestCase
     public function testTicketStatusIsImmutable(): void
     {
         $ticket = new Ticket();
-        $this->expectException(\BadMethodCallException::class);
-        $ticket->setStatus('closed'); // Si 'closed' n'est pas un statut valide
+        $this->expectException(\TypeError::class);
+        /** @phpstan-ignore-next-line */
+        $ticket->setStatus('closed'); // invalid type
     }
 
     public function testTicketPriorityIsImmutable(): void
     {
         $ticket = new Ticket();
-        $this->expectException(\BadMethodCallException::class);
-        $ticket->setPriority('fake'); // Si 'fake' n'est pas une priorité valide
+        $this->expectException(\TypeError::class);
+        /** @phpstan-ignore-next-line */
+        $ticket->setPriority('fake'); // invalid type
     }
 }

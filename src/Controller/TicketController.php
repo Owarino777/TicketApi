@@ -4,6 +4,7 @@
 namespace App\Controller;
 
 use App\Entity\Ticket;
+use App\Enum\TicketPriority;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,7 +31,12 @@ class TicketController extends AbstractController
         $ticket = new Ticket();
         $ticket->setTitle($data['title']);
         $ticket->setDescription($data['description']);
-        $ticket->setPriority($data['priority']);
+
+        try {
+            $ticket->setPriority(TicketPriority::from($data['priority']));
+        } catch (\ValueError $e) {
+            return $this->json(['error' => 'Invalid priority'], 400);
+        }
         $ticket->setOwner($security->getUser());
 
         $errors = $validator->validate($ticket);
