@@ -290,8 +290,8 @@ class TicketTest extends WebTestCase
     {
         $ticket = new Ticket();
         $this->expectException(\TypeError::class);
-        /** @phpstan-ignore-next-line */
-        $ticket->setStatus('closed'); // invalid type
+        /*@phpstan-ignore-next-line*/
+        $ticket->setStatus('closed'); // invalid type - passing string instead of enum
     }
 
     public function testTicketPriorityIsImmutable(): void
