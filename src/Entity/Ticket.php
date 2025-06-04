@@ -234,10 +234,6 @@ class Ticket
         return $this;
     }
 
-    public function getAssignedTo(): ?User
-    {
-        return $this->assignee;
-    }
 
     public function __toString(): string
     {
