@@ -21,7 +21,6 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Get(),
         new GetCollection(),
-        new Post(security: "is_granted('ROLE_USER')"),
         new Put(security: "is_granted('ROLE_USER')"),
         new Delete(security: "is_granted('ROLE_USER')")
     ]

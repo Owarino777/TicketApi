@@ -4,6 +4,33 @@ API de gestion de tickets conforme aux **standards professionnels**, basée sur 
 
 ---
 
+## 0. 📦 Installation rapide
+
+```bash
+# Cloner le dépôt
+git clone <repo-url> TicketApi
+cd TicketApi
+
+# Installer les dépendances PHP
+composer install
+
+# Démarrer les services nécessaires (PostgreSQL, Mailpit)
+docker compose up -d
+
+# Générer les clés JWT pour l’authentification
+php bin/console lexik:jwt:generate-keypair
+
+# Appliquer la migration initiale
+php bin/console doctrine:migrations:migrate
+
+# Lancer les tests unitaires
+php bin/phpunit
+```
+
+Les variables d’environnement par défaut sont définies dans `.env`. Personnalisez-les au besoin (base de données, mailer…).
+
+---
+
 ## 1. 🚧 Structure des entités
 
 ### **User**
@@ -160,6 +187,26 @@ php bin/console doctrine:schema:validate
 * Dockerisation pour portabilité et reproductibilité.
 * Migration versionnée pour traçabilité.
 * Sécurité par défaut, tests prêts à implémenter.
+
+---
+
+## 10. 📈 État du projet & prochaines étapes
+
+### Ce qui est en place
+
+* Modèle de données complet (User, Ticket, Comment) avec relations Doctrine
+* API Platform exposant les entités et un contrôleur personnalisé pour la création de tickets
+* Authentification JWT configurée (via LexikJWTAuthenticationBundle)
+* Migrations initiales versionnées
+* Suite de tests unitaires et fonctionnels prête à l’emploi
+
+### Ce qu’il reste à faire
+
+* Implémenter la logique d’assignation/désassignation via des endpoints dédiés
+* Ajouter la gestion de l’avancement des tickets (start progress/close)
+* Couvrir ces nouvelles routes par des tests et une documentation Swagger
+* Mettre en place une pipeline CI/CD pour automatiser tests et déploiement
+* Optionnel : notifications email et tableau de bord statistiques
 
 ---
 
