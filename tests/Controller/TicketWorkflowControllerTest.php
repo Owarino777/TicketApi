@@ -9,18 +9,33 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class TicketWorkflowControllerTest extends WebTestCase
 {
+    private $client;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->client = static::createClient();
+
         $em = static::getContainer()->get('doctrine')->getManager();
         $connection = $em->getConnection();
         $platform = $connection->getDatabasePlatform();
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS=0');
+
+        if ($platform->getName() === 'sqlite') {
+            $connection->executeStatement('PRAGMA foreign_keys = OFF');
+        } else {
+            $connection->executeStatement('SET FOREIGN_KEY_CHECKS=0');
+        }
+
         foreach ($em->getMetadataFactory()->getAllMetadata() as $meta) {
             $table = $meta->getTableName();
             $connection->executeStatement($platform->getTruncateTableSQL($table, true));
         }
-        $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+
+        if ($platform->getName() === 'sqlite') {
+            $connection->executeStatement('PRAGMA foreign_keys = ON');
+        } else {
+            $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+        }
     }
 
     private function createUser(): User
@@ -50,7 +65,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testAssignTicket(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $ticket = $this->createTicket($owner);
@@ -62,7 +77,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testUnassignTicket(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $ticket = $this->createTicket($owner);
@@ -80,7 +95,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testUnassignTicketForbiddenForNonOwner(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $other = $this->createUser();
         $ticket = $this->createTicket($owner);
@@ -93,7 +108,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testStartTicket(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $ticket = $this->createTicket($owner);
@@ -111,7 +126,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testStartTicketForbiddenForNonAssignee(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $other = $this->createUser();
@@ -127,17 +142,19 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testCloseTicket(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $ticket = $this->createTicket($owner);
         $ticket->setAssignee($assignee);
         static::getContainer()->get('doctrine')->getManager()->flush();
 
-        $client->loginUser($assignee);
-        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/start');
+        $jwtManager = static::getContainer()->get('lexik_jwt_authentication.jwt_manager');
+        $token = $jwtManager->create($assignee);
+        $client->disableReboot();
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/start', [], [], ['HTTP_Authorization' => 'Bearer ' . $token]);
         static::getContainer()->get('doctrine')->getManager()->refresh($ticket);
-        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/close');
+        $client->request('POST', '/api/tickets/' . $ticket->getId() . '/close', [], [], ['HTTP_Authorization' => 'Bearer ' . $token]);
 
         $this->assertResponseIsSuccessful();
 
@@ -147,7 +164,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testCloseTicketForbiddenForNonAssignee(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
         $other = $this->createUser();
@@ -163,7 +180,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testMyTickets(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $other = $this->createUser();
 
@@ -181,7 +198,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testAssignedTickets(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $owner = $this->createUser();
         $assignee = $this->createUser();
 
@@ -202,7 +219,7 @@ class TicketWorkflowControllerTest extends WebTestCase
 
     public function testMe(): void
     {
-        $client = static::createClient();
+        $client = $this->client;
         $user = $this->createUser();
 
         $client->request('GET', '/api/me');
