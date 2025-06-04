@@ -202,9 +202,9 @@ php bin/console doctrine:schema:validate
 
 ### Ce qu’il reste à faire
 
-* Implémenter la logique d’assignation/désassignation via des endpoints dédiés
-* Ajouter la gestion de l’avancement des tickets (start progress/close)
-* Couvrir ces nouvelles routes par des tests et une documentation Swagger
+* Implémenter la logique d’assignation/désassignation via des endpoints dédiés **(fait)**
+* Ajouter la gestion de l’avancement des tickets (start progress/close) **(fait)**
+* Couvrir ces nouvelles routes par des tests et une documentation Swagger *(en cours)*
 * Mettre en place une pipeline CI/CD pour automatiser tests et déploiement
 * Optionnel : notifications email et tableau de bord statistiques
 
