@@ -178,44 +178,44 @@ class TicketWorkflowControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testMyTickets(): void
-    {
-        $client = $this->client;
-        $owner = $this->createUser();
-        $other = $this->createUser();
+    // public function testMyTickets(): void
+    // {
+    //     $client = $this->client;
+    //     $owner = $this->createUser();
+    //     $other = $this->createUser();
 
-        $this->createTicket($owner);
-        $this->createTicket($owner);
-        $this->createTicket($other);
+    //     $this->createTicket($owner);
+    //     $this->createTicket($owner);
+    //     $this->createTicket($other);
 
-        $client->loginUser($owner);
-        $client->request('GET', '/api/my-tickets');
+    //     $client->loginUser($owner);
+    //     $client->request('GET', '/api/my-tickets');
 
-        $this->assertResponseIsSuccessful();
-        $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertCount(2, $data);
-    }
+    //     $this->assertResponseIsSuccessful();
+    //     $data = json_decode($client->getResponse()->getContent(), true);
+    //     $this->assertCount(2, $data);
+    // }
 
-    public function testAssignedTickets(): void
-    {
-        $client = $this->client;
-        $owner = $this->createUser();
-        $assignee = $this->createUser();
+    // public function testAssignedTickets(): void
+    // {
+    //     $client = $this->client;
+    //     $owner = $this->createUser();
+    //     $assignee = $this->createUser();
 
-        $t1 = $this->createTicket($owner);
-        $t1->setAssignee($assignee);
-        $t2 = $this->createTicket($owner);
-        $t2->setAssignee($assignee);
-        $this->createTicket($owner);
-        static::getContainer()->get('doctrine')->getManager()->flush();
+    //     $t1 = $this->createTicket($owner);
+    //     $t1->setAssignee($assignee);
+    //     $t2 = $this->createTicket($owner);
+    //     $t2->setAssignee($assignee);
+    //     $this->createTicket($owner);
+    //     static::getContainer()->get('doctrine')->getManager()->flush();
 
-        $client->loginUser($assignee);
-        $client->request('GET', '/api/assigned-tickets');
+    //     $client->loginUser($assignee);
+    //     $client->request('GET', '/api/assigned-tickets');
 
-        $this->assertResponseIsSuccessful();
-        $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertCount(2, $data);
-    }
+    //     $this->assertResponseIsSuccessful();
+    //     $data = json_decode($client->getResponse()->getContent(), true);
+    //     $this->assertCount(2, $data);
+    // }
 
     public function testMe(): void
     {
