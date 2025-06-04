@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use App\Controller\TicketWorkflowController;
 use App\Enum\TicketPriority;
 use App\Enum\TicketStatus;
 use App\Repository\TicketRepository;
@@ -22,7 +23,75 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Get(),
         new GetCollection(),
         new Put(security: "is_granted('ROLE_USER')"),
-        new Delete(security: "is_granted('ROLE_USER')")
+        new Delete(security: "is_granted('ROLE_USER')"),
+        new Post(
+            uriTemplate: '/tickets/{id}/assign',
+            controller: [TicketWorkflowController::class, 'assign'],
+            openapiContext: [
+                'summary' => 'Assign a ticket to a user',
+                'requestBody' => [
+                    'content' => [
+                        'application/json' => [
+                            'schema' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'assignee_id' => ['type' => 'integer']
+                                ],
+                                'required' => ['assignee_id']
+                            ],
+                            'example' => ['assignee_id' => 1]
+                        ]
+                    ]
+                ],
+                'responses' => [
+                    '200' => ['description' => 'Ticket assigned']
+                ]
+            ]
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/unassign',
+            controller: [TicketWorkflowController::class, 'unassign'],
+            openapiContext: [
+                'summary' => 'Unassign a ticket',
+                'responses' => [
+                    '200' => ['description' => 'Ticket unassigned']
+                ]
+            ]
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/start',
+            controller: [TicketWorkflowController::class, 'start'],
+            openapiContext: [
+                'summary' => 'Start progress on a ticket',
+                'responses' => [
+                    '200' => ['description' => 'Ticket started']
+                ]
+            ]
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/close',
+            controller: [TicketWorkflowController::class, 'close'],
+            openapiContext: [
+                'summary' => 'Close a ticket',
+                'responses' => [
+                    '200' => ['description' => 'Ticket closed']
+                ]
+            ]
+        ),
+        new GetCollection(
+            uriTemplate: '/my-tickets',
+            controller: [TicketWorkflowController::class, 'myTickets'],
+            openapiContext: [
+                'summary' => 'List tickets owned by current user'
+            ]
+        ),
+        new GetCollection(
+            uriTemplate: '/assigned-tickets',
+            controller: [TicketWorkflowController::class, 'assignedTickets'],
+            openapiContext: [
+                'summary' => 'List tickets assigned to current user'
+            ]
+        )
     ]
 )]
 #[ORM\Entity(repositoryClass: TicketRepository::class)]

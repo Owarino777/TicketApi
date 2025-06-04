@@ -221,4 +221,100 @@ php bin/console doctrine:schema:validate
 
 ---
 
+## 11. 🚀 Exemples d'appels Workflow
+
+### `POST /api/tickets/{id}/assign`
+
+```bash
+curl -X POST http://localhost/api/tickets/1/assign \
+     -H "Authorization: Bearer <JWT>" \
+     -H "Content-Type: application/json" \
+     -d '{"assignee_id": 2}'
+```
+
+Réponse :
+
+```json
+{"message": "Ticket assigned"}
+```
+
+### `POST /api/tickets/{id}/unassign`
+
+```bash
+curl -X POST http://localhost/api/tickets/1/unassign \
+     -H "Authorization: Bearer <JWT>"
+```
+
+Réponse :
+
+```json
+{"message": "Ticket unassigned"}
+```
+
+### `POST /api/tickets/{id}/start`
+
+```bash
+curl -X POST http://localhost/api/tickets/1/start \
+     -H "Authorization: Bearer <JWT>"
+```
+
+Réponse :
+
+```json
+{"message": "Ticket started"}
+```
+
+### `POST /api/tickets/{id}/close`
+
+```bash
+curl -X POST http://localhost/api/tickets/1/close \
+     -H "Authorization: Bearer <JWT>"
+```
+
+Réponse :
+
+```json
+{"message": "Ticket closed"}
+```
+
+### `GET /api/my-tickets`
+
+```bash
+curl -H "Authorization: Bearer <JWT>" http://localhost/api/my-tickets
+```
+
+Réponse (exemple) :
+
+```json
+[
+  {"id": 1, "title": "Bug", "status": "pending"}
+]
+```
+
+### `GET /api/assigned-tickets`
+
+```bash
+curl -H "Authorization: Bearer <JWT>" http://localhost/api/assigned-tickets
+```
+
+Réponse (exemple) :
+
+```json
+[
+  {"id": 1, "title": "Bug", "status": "in_progress"}
+]
+```
+
+### `GET /api/me`
+
+```bash
+curl -H "Authorization: Bearer <JWT>" http://localhost/api/me
+```
+
+Réponse :
+
+```json
+{"id": 1, "email": "user@example.com", "name": "John Doe"}
+```
+
 **Fin de documentation**
