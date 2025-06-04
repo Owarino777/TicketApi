@@ -138,8 +138,11 @@ class Ticket
 
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
-        $this->createdAt = $createdAt;
+        if ($this->createdAt !== null) {
+            throw new \BadMethodCallException('createdAt is immutable');
+        }
 
+        $this->createdAt = $createdAt;
         return $this;
     }
 

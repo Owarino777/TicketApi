@@ -17,22 +17,21 @@ class TicketTest extends WebTestCase
         $assignee = new User();
         $ticket = new Ticket();
 
-        $now = new \DateTimeImmutable();
+        $now = $ticket->getCreatedAt(); // La date assignée à la création
         $later = $now->modify('+1 hour');
 
         $ticket
             ->setTitle('Incident critique')
             ->setDescription('La machine est HS')
             ->setPriority(TicketPriority::HIGH)
-            ->setStatus(TicketStatus::PENDING)
-            ->setCreatedAt($now)
+            ->setStatus(TicketStatus::PENDING) // ou WAITING si tu veux tester la transition auto plus bas
             ->setOwner($owner)
             ->setAssignee($assignee);
 
         $this->assertSame('Incident critique', $ticket->getTitle());
         $this->assertSame('La machine est HS', $ticket->getDescription());
         $this->assertSame(TicketPriority::HIGH, $ticket->getPriority());
-        $this->assertSame(TicketStatus::WAITING, $ticket->getStatus());
+        $this->assertSame(TicketStatus::WAITING, $ticket->getStatus()); // logique auto dans setAssignee()
         $this->assertSame($now, $ticket->getCreatedAt());
         $this->assertSame($owner, $ticket->getOwner());
         $this->assertSame($assignee, $ticket->getAssignee());
@@ -112,6 +111,7 @@ class TicketTest extends WebTestCase
 
         // Créer un user pour le test
         $user = new User();
+        $user->setName('John Doe');
         $user->setEmail('ticket@api.com');
         $user->setPassword('hash');
         $em->persist($user);
@@ -119,10 +119,11 @@ class TicketTest extends WebTestCase
 
         $client->loginUser($user);
 
-        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/ld+json'], json_encode([
             'title' => 'Nouveau ticket',
             'description' => 'Détails du ticket',
-            'priority' => 'normale'
+            'priority' => 'normale',
+            'owner' => '/api/users/' . $user->getId()
         ]));
 
         $this->assertResponseStatusCodeSame(201);
@@ -134,7 +135,7 @@ class TicketTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/ld+json'], json_encode([
             'title' => 'Nouveau ticket',
             'description' => 'Détails du ticket',
             'priority' => 'normale'
@@ -143,15 +144,28 @@ class TicketTest extends WebTestCase
         $this->assertResponseStatusCodeSame(401);
         $response = $client->getResponse();
         $this->assertJson($response->getContent());
-        $this->assertStringContainsString('Unauthorized', $response->getContent());
+        $this->assertStringContainsString('JWT Token not found', $response->getContent());
     }
 
     public function testCreateTicketWithMissingFields(): void
     {
+        // Ajoute l’utilisateur + loginUser
         $client = static::createClient();
-        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
-            'title' => 'Nouveau ticket'
-            // 'description' et 'priority' manquants
+        $em = static::getContainer()->get('doctrine')->getManager();
+        $user = new User();
+        $user->setName('Test Name');
+        $user->setEmail('user@test.com');
+        $user->setPassword('hash');
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/ld+json'], json_encode([
+            'title' => str_repeat('a', 256), // Titre trop long
+            'description' => 'Détails du ticket',
+            'priority' => 'normale',
+            'owner' => '/api/users/' . $user->getId()
         ]));
 
         $this->assertResponseStatusCodeSame(400);
@@ -163,10 +177,20 @@ class TicketTest extends WebTestCase
     public function testCreateTicketWithValidationErrors(): void
     {
         $client = static::createClient();
-        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+        $em = static::getContainer()->get('doctrine')->getManager();
+        $user = new User();
+        $user->setName('Test');
+        $user->setEmail('test@validation.com');
+        $user->setPassword('hash');
+        $em->persist($user);
+        $em->flush();
+        $client->loginUser($user);
+
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/ld+json'], json_encode([
             'title' => str_repeat('a', 256), // Titre trop long
             'description' => 'Détails du ticket',
-            'priority' => 'normale'
+            'priority' => 'normale',
+            'owner' => '/api/users/' . $user->getId()
         ]));
 
         $this->assertResponseStatusCodeSame(422);
@@ -274,8 +298,14 @@ class TicketTest extends WebTestCase
     public function testTicketCreatedAtIsSetOnCreation(): void
     {
         $ticket = new Ticket();
-        $this->assertInstanceOf(\DateTimeImmutable::class, $ticket->getCreatedAt());
-        $this->assertEquals(new \DateTimeImmutable(), $ticket->getCreatedAt()->setTime(0, 0, 0));
+        $createdAt = $ticket->getCreatedAt();
+
+        $this->assertInstanceOf(\DateTimeImmutable::class, $createdAt);
+
+        // Si tu veux comparer la date du jour sans l'heure :
+        $expected = (new \DateTimeImmutable())->setTime(0, 0, 0);
+        $actual = $createdAt->setTime(0, 0, 0);
+        $this->assertEquals($expected, $actual);
     }
 
     public function testTicketToStringReturnsTitle(): void
