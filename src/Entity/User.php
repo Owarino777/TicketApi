@@ -84,7 +84,13 @@ class User
 
     public function getRoles(): array
     {
-        return $this->roles;
+        $roles = $this->roles;
+        // Garantir que ROLE_USER est toujours présent
+        if (!in_array('ROLE_USER', $roles, true)) {
+            $roles[] = 'ROLE_USER';
+        }
+
+        return array_unique($roles);
     }
 
     public function setRoles(array $roles): static
@@ -194,5 +200,25 @@ class User
         }
 
         return $this;
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email ?? '';
+    }
+
+    public function getUsername(): string
+    {
+        return $this->getUserIdentifier();
+    }
+
+    public function getSalt(): ?string
+    {
+        return null; // si bcrypt ou sodium utilisé
+    }
+
+    public function eraseCredentials(): void
+    {
+        // rien à effacer ici pour l’instant
     }
 }

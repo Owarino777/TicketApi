@@ -13,14 +13,36 @@ class CommentTest extends TestCase
     {
         $author = new User();
         $ticket = new Ticket();
+        $now = new \DateTimeImmutable();
         $comment = new Comment();
 
-        $comment->setContent('Un commentaire')
+        $comment
+            ->setContent('Problème constaté ce matin')
+            ->setCreatedAt($now)
             ->setAuthor($author)
             ->setTicket($ticket);
 
-        $this->assertSame('Un commentaire', $comment->getContent());
+        $this->assertSame('Problème constaté ce matin', $comment->getContent());
+        $this->assertSame($now, $comment->getCreatedAt());
         $this->assertSame($author, $comment->getAuthor());
         $this->assertSame($ticket, $comment->getTicket());
+    }
+
+    public function testCommentBelongsToTicket()
+    {
+        $ticket = new Ticket();
+        $comment = new Comment();
+
+        $comment->setTicket($ticket);
+        $this->assertSame($ticket, $comment->getTicket());
+    }
+
+    public function testCommentBelongsToAuthor()
+    {
+        $author = new User();
+        $comment = new Comment();
+
+        $comment->setAuthor($author);
+        $this->assertSame($author, $comment->getAuthor());
     }
 }

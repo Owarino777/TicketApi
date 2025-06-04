@@ -53,6 +53,8 @@ class Ticket
     public function __construct()
     {
         $this->comments = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
+        $this->status = 'pending';
     }
 
     public function getId(): ?int
@@ -196,5 +198,10 @@ class Ticket
         }
 
         return $this;
+    }
+
+    public function getAssignedTo(): ?User
+    {
+        return $this->assignee;
     }
 }

@@ -65,3 +65,4 @@ config/routes/api_platform.yaml
 /.env.*.local.php
 # Ignore the .env files with specific environment names
 /.env.*.local.php
+.env

@@ -5,53 +5,298 @@ namespace App\Tests\Entity;
 use App\Entity\Ticket;
 use App\Entity\User;
 use App\Entity\Comment;
-use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use ApiPlatform\Core\Bridge\Symfony\Bundle\Test\ApiTestCase;
 
-class TicketTest extends TestCase
+class TicketTest extends WebTestCase
 {
     public function testTicketSettersAndGetters()
     {
         $owner = new User();
         $assignee = new User();
-
         $ticket = new Ticket();
-        $ticket->setTitle('Titre')
-            ->setDescription('Desc')
-            ->setPriority('basse')
-            ->setStatus('pending')
-            ->setOwner($owner)
-            ->setAssignee($assignee);
 
-        $this->assertSame('Titre', $ticket->getTitle());
-        $this->assertSame('Desc', $ticket->getDescription());
-        $this->assertSame('basse', $ticket->getPriority());
+        $now = new \DateTimeImmutable();
+        $later = $now->modify('+1 hour');
+
+        $ticket
+            ->setTitle('Incident critique')
+            ->setDescription('La machine est HS')
+            ->setPriority('haute')
+            ->setStatus('pending')
+            ->setCreatedAt($now)
+            ->setOwner($owner)
+            ->setAssignee($assignee)
+            ->setAssignedAtFirst($now)
+            ->setAssignedAtLast($later);
+
+        $this->assertSame('Incident critique', $ticket->getTitle());
+        $this->assertSame('La machine est HS', $ticket->getDescription());
+        $this->assertSame('haute', $ticket->getPriority());
         $this->assertSame('pending', $ticket->getStatus());
+        $this->assertSame($now, $ticket->getCreatedAt());
         $this->assertSame($owner, $ticket->getOwner());
         $this->assertSame($assignee, $ticket->getAssignee());
+        $this->assertSame($now, $ticket->getAssignedAtFirst());
+        $this->assertSame($later, $ticket->getAssignedAtLast());
     }
 
-    public function testTicketCommentsRelation()
+    public function testTicketAddAndRemoveComment()
     {
         $ticket = new Ticket();
         $comment = new Comment();
-        $ticket->addComment($comment);
 
-        $this->assertTrue($ticket->getComments()->contains($comment));
+        // Ajout du commentaire
+        $ticket->addComment($comment);
+        $this->assertCount(1, $ticket->getComments());
         $this->assertSame($ticket, $comment->getTicket());
 
         // Suppression du commentaire
         $ticket->removeComment($comment);
-        $this->assertFalse($ticket->getComments()->contains($comment));
-        // À vérifier côté Comment : $comment->getTicket() === null si removeComment() gère bien le "orphan"
+        $this->assertCount(0, $ticket->getComments());
+        $this->assertNull($comment->getTicket());
     }
 
-    public function testTicketEnumPriorityAndStatus()
+    public function testTicketOwnerAndAssignee()
+    {
+        $owner = new User();
+        $assignee = new User();
+        $ticket = new Ticket();
+
+        $ticket->setOwner($owner);
+        $ticket->setAssignee($assignee);
+
+        $this->assertSame($owner, $ticket->getOwner());
+        $this->assertSame($assignee, $ticket->getAssignee());
+    }
+
+    public function testTicketPriorityEnum()
     {
         $ticket = new Ticket();
-        $ticket->setPriority('normale');
-        $ticket->setStatus('done');
+        $ticket->setPriority('basse');
+        $this->assertSame('basse', $ticket->getPriority());
 
-        $this->assertContains($ticket->getPriority(), ['basse', 'normale', 'haute']);
-        $this->assertContains($ticket->getStatus(), ['pending', 'waiting', 'in_progress', 'done']);
+        $ticket->setPriority('normale');
+        $this->assertSame('normale', $ticket->getPriority());
+
+        $ticket->setPriority('haute');
+        $this->assertSame('haute', $ticket->getPriority());
+
+        // Tester une valeur non autorisée si ta logique métier le prévoit (déclencher exception)
+        // $this->expectException(\InvalidArgumentException::class);
+        // $ticket->setPriority('fake');
+    }
+
+    public function testTicketStatusEnum()
+    {
+        $ticket = new Ticket();
+        $ticket->setStatus('pending');
+        $this->assertSame('pending', $ticket->getStatus());
+
+        $ticket->setStatus('waiting');
+        $this->assertSame('waiting', $ticket->getStatus());
+
+        $ticket->setStatus('in_progress');
+        $this->assertSame('in_progress', $ticket->getStatus());
+
+        $ticket->setStatus('done');
+        $this->assertSame('done', $ticket->getStatus());
+
+        // Tester une valeur non autorisée si ta logique métier le prévoit (déclencher exception)
+        // $this->expectException(\InvalidArgumentException::class);
+        // $ticket->setStatus('closed');
+    }
+    public function testCreateTicket(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get('doctrine')->getManager();
+
+        // Créer un user pour le test
+        $user = new User();
+        $user->setEmail('ticket@api.com');
+        $user->setPassword('hash');
+        $em->persist($user);
+        $em->flush();
+
+        $client->loginUser($user);
+
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'title' => 'Nouveau ticket',
+            'description' => 'Détails du ticket',
+            'priority' => 'normale'
+        ]));
+
+        $this->assertResponseStatusCodeSame(201);
+        $response = $client->getResponse();
+        $this->assertJson($response->getContent());
+        $this->assertStringContainsString('Ticket created', $response->getContent());
+    }
+    public function testCreateTicketWithoutAuthentication(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'title' => 'Nouveau ticket',
+            'description' => 'Détails du ticket',
+            'priority' => 'normale'
+        ]));
+
+        $this->assertResponseStatusCodeSame(401);
+        $response = $client->getResponse();
+        $this->assertJson($response->getContent());
+        $this->assertStringContainsString('Unauthorized', $response->getContent());
+    }
+
+    public function testCreateTicketWithMissingFields(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'title' => 'Nouveau ticket'
+            // 'description' et 'priority' manquants
+        ]));
+
+        $this->assertResponseStatusCodeSame(400);
+        $response = $client->getResponse();
+        $this->assertJson($response->getContent());
+        $this->assertStringContainsString('Missing fields', $response->getContent());
+    }
+
+    public function testCreateTicketWithValidationErrors(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/api/tickets', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'title' => str_repeat('a', 256), // Titre trop long
+            'description' => 'Détails du ticket',
+            'priority' => 'normale'
+        ]));
+
+        $this->assertResponseStatusCodeSame(422);
+        $response = $client->getResponse();
+        $this->assertJson($response->getContent());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    public function testTicketCreatedAtIsImmutable(): void
+    {
+        $ticket = new Ticket();
+        $createdAt = $ticket->getCreatedAt();
+
+        // Essayer de modifier la date de création
+        $this->expectException(\BadMethodCallException::class);
+        $ticket->setCreatedAt(new \DateTimeImmutable('2020-01-01'));
+
+        // Vérifier que la date de création n'a pas changé
+        $this->assertSame($createdAt, $ticket->getCreatedAt());
+    }
+
+    public function testTicketAssignedAtFirstAndLast(): void
+    {
+        $ticket = new Ticket();
+        $now = new \DateTimeImmutable();
+        $later = $now->modify('+1 hour');
+
+        $ticket->setAssignedAtFirst($now);
+        $ticket->setAssignedAtLast($later);
+
+        $this->assertSame($now, $ticket->getAssignedAtFirst());
+        $this->assertSame($later, $ticket->getAssignedAtLast());
+    }
+
+    public function testTicketOwnerAndAssigneeRelation(): void
+    {
+        $owner = new User();
+        $assignee = new User();
+        $ticket = new Ticket();
+
+        $ticket->setOwner($owner);
+        $ticket->setAssignee($assignee);
+
+        $this->assertSame($owner, $ticket->getOwner());
+        $this->assertSame($assignee, $ticket->getAssignee());
+    }
+
+    public function testTicketCommentsRelation(): void
+    {
+        $ticket = new Ticket();
+        $comment = new Comment();
+
+        $ticket->addComment($comment);
+        $this->assertCount(1, $ticket->getComments());
+        $this->assertSame($ticket, $comment->getTicket());
+
+        $ticket->removeComment($comment);
+        $this->assertCount(0, $ticket->getComments());
+        $this->assertNull($comment->getTicket());
+    }
+
+    public function testTicketToString(): void
+    {
+        $ticket = new Ticket();
+        $ticket->setTitle('Test Ticket');
+        $this->assertSame('Test Ticket', (string) $ticket);
+    }
+
+    public function testTicketStatusTransitions(): void
+    {
+        $ticket = new Ticket();
+        $ticket->setStatus('pending');
+
+        // Transition to 'in_progress'
+        $ticket->setStatus('in_progress');
+        $this->assertSame('in_progress', $ticket->getStatus());
+
+        // Transition to 'done'
+        $ticket->setStatus('done');
+        $this->assertSame('done', $ticket->getStatus());
+
+        // Test invalid transition (if your logic allows it)
+        // $this->expectException(\InvalidArgumentException::class);
+        // $ticket->setStatus('closed');
+    }
+
+    public function testTicketPriorityTransitions(): void
+    {
+        $ticket = new Ticket();
+        $ticket->setPriority('basse');
+
+        // Transition to 'normale'
+        $ticket->setPriority('normale');
+        $this->assertSame('normale', $ticket->getPriority());
+
+        // Transition to 'haute'
+        $ticket->setPriority('haute');
+        $this->assertSame('haute', $ticket->getPriority());
+
+        // Test invalid transition (if your logic allows it)
+        // $this->expectException(\InvalidArgumentException::class);
+        // $ticket->setPriority('fake');
+    }
+
+    public function testTicketCreatedAtIsSetOnCreation(): void
+    {
+        $ticket = new Ticket();
+        $this->assertInstanceOf(\DateTimeImmutable::class, $ticket->getCreatedAt());
+        $this->assertEquals(new \DateTimeImmutable(), $ticket->getCreatedAt()->setTime(0, 0, 0));
+    }
+
+    public function testTicketToStringReturnsTitle(): void
+    {
+        $ticket = new Ticket();
+        $ticket->setTitle('Test Ticket');
+        $this->assertSame('Test Ticket', (string) $ticket);
+    }
+
+    public function testTicketStatusIsImmutable(): void
+    {
+        $ticket = new Ticket();
+        $this->expectException(\BadMethodCallException::class);
+        $ticket->setStatus('closed'); // Si 'closed' n'est pas un statut valide
+    }
+
+    public function testTicketPriorityIsImmutable(): void
+    {
+        $ticket = new Ticket();
+        $this->expectException(\BadMethodCallException::class);
+        $ticket->setPriority('fake'); // Si 'fake' n'est pas une priorité valide
     }
 }
