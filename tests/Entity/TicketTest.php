@@ -8,7 +8,6 @@ use App\Enum\TicketStatus;
 use App\Entity\User;
 use App\Entity\Comment;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use ApiPlatform\Core\Bridge\Symfony\Bundle\Test\ApiTestCase;
 
 class TicketTest extends WebTestCase
 {
