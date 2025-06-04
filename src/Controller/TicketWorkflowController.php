@@ -4,6 +4,7 @@ namespace App\Controller;
 use App\Entity\Ticket;
 use App\Entity\User;
 use App\Enum\TicketStatus;
+use App\Security\TicketVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -21,11 +22,12 @@ class TicketWorkflowController extends AbstractController
             return $this->json(['error' => 'Ticket not found'], 404);
         }
 
-        if ($ticket->getOwner() !== $security->getUser()) {
-            return $this->json(['error' => 'Access denied'], 403);
-        }
+        $this->denyAccessUnlessGranted(TicketVoter::EDIT, $ticket);
 
         $data = json_decode($request->getContent(), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return $this->json(['error' => 'Invalid JSON'], 400);
+        }
         if (!isset($data['assignee_id'])) {
             return $this->json(['error' => 'Missing assignee_id'], 400);
         }
@@ -50,9 +52,7 @@ class TicketWorkflowController extends AbstractController
             return $this->json(['error' => 'Ticket not found'], 404);
         }
 
-        if ($ticket->getOwner() !== $security->getUser()) {
-            return $this->json(['error' => 'Access denied'], 403);
-        }
+        $this->denyAccessUnlessGranted(TicketVoter::EDIT, $ticket);
 
         $ticket->setAssignee(null);
         $em->flush();
@@ -71,6 +71,9 @@ class TicketWorkflowController extends AbstractController
         if ($ticket->getAssignee() !== $security->getUser()) {
             return $this->json(['error' => 'Access denied'], 403);
         }
+        if ($ticket->getStatus() !== TicketStatus::WAITING) {
+            return $this->json(['error' => 'Invalid status transition'], 400);
+        }
 
         $ticket->setStatus(TicketStatus::IN_PROGRESS);
         $em->flush();
@@ -88,6 +91,9 @@ class TicketWorkflowController extends AbstractController
 
         if ($ticket->getAssignee() !== $security->getUser()) {
             return $this->json(['error' => 'Access denied'], 403);
+        }
+        if ($ticket->getStatus() !== TicketStatus::IN_PROGRESS) {
+            return $this->json(['error' => 'Invalid status transition'], 400);
         }
 
         $ticket->setStatus(TicketStatus::DONE);

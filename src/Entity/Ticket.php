@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use App\Controller\TicketWorkflowController;
 use App\Enum\TicketPriority;
 use App\Enum\TicketStatus;
 use App\Repository\TicketRepository;
@@ -22,7 +23,76 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Get(),
         new GetCollection(),
         new Put(security: "is_granted('ROLE_USER')"),
-        new Delete(security: "is_granted('ROLE_USER')")
+        new Delete(security: "is_granted('ROLE_USER')"),
+        new Post(
+            uriTemplate: '/tickets/{id}/assign',
+            controller: TicketWorkflowController::class . '::assign',
+            extraProperties: [
+                'openapi_context' => [
+                    'summary' => 'Assign a ticket to a user',
+                    'responses' => [
+                        '200' => ['description' => 'Ticket assigned'],
+                        '400' => ['description' => 'Invalid user or ticket']
+                    ]
+                ]
+            ]
+
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/unassign',
+            controller: TicketWorkflowController::class . '::unassign',
+            extraProperties: [
+                'summary' => 'Unassign a ticket from a user',
+                'responses' => [
+                    '200' => ['description' => 'Ticket unassigned'],
+                    '400' => ['description' => 'Invalid ticket']
+                ]
+            ]
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/start',
+            controller: TicketWorkflowController::class . '::start',
+            extraProperties: [
+                'summary' => 'Start working on a ticket',
+                'responses' => [
+                    '200' => ['description' => 'Ticket started'],
+                    '400' => ['description' => 'Invalid ticket status']
+                ]
+            ]
+        ),
+        new Post(
+            uriTemplate: '/tickets/{id}/close',
+            controller: TicketWorkflowController::class . '::close',
+            extraProperties: [
+                'summary' => 'Close a ticket',
+                'responses' => [
+                    '200' => ['description' => 'Ticket closed'],
+                    '400' => ['description' => 'Invalid ticket status']
+                ]
+            ]
+        ),
+        new GetCollection(
+            uriTemplate: '/my-tickets',
+            security: "is_granted('ROLE_USER')",
+            securityMessage: 'You must be logged in to access your tickets.',
+            extraProperties: [
+                'summary' => 'Get tickets owned by the current user',
+                'responses' => [
+                    '200' => ['description' => 'List of tickets owned by the user']
+                ]
+            ]
+        ),
+        new GetCollection(
+            uriTemplate: '/assigned-tickets',
+            security: "is_granted('ROLE_USER')",
+            securityMessage: 'You must be logged in to access assigned tickets.',
+            extraProperties: [
+                'summary' => 'Get tickets assigned to the current user',
+                'responses' => [
+                    '200' => ['description' => 'List of tickets assigned to the user']
+                ]
+            ]
+        )
     ]
 )]
 #[ORM\Entity(repositoryClass: TicketRepository::class)]
@@ -234,10 +304,6 @@ class Ticket
         return $this;
     }
 
-    public function getAssignedTo(): ?User
-    {
-        return $this->assignee;
-    }
 
     public function __toString(): string
     {

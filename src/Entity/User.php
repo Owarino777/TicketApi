@@ -2,7 +2,10 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
 use App\Repository\UserRepository;
+use App\Controller\TicketWorkflowController;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -11,6 +14,18 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
+#[ApiResource(
+    operations: [
+        new Get(
+            uriTemplate: '/me',
+            controller: 'App\Controller\UserController::getCurrentUser',
+            read: false,
+            name: 'current_user',
+            security: "is_granted('ROLE_USER')",
+            securityMessage: 'You must be logged in to access this resource.',
+        )
+    ]
+)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
